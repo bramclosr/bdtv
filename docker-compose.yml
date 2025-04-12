@@ -1,0 +1,55 @@
+services:
+  # PostgreSQL Database Service
+  db:
+    image: postgres:15 # Using PostgreSQL version 15 - you can choose another stable version
+    container_name: postgres_db_${PROJECT_NAME:-dev} # Add project name for uniqueness if needed
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER} # Read from .env file
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD} # Read from .env file
+      POSTGRES_DB: ${POSTGRES_DB} # Read from .env file
+    volumes:
+      - postgres_data:/var/lib/postgresql/data # Mount volume for persistence
+    ports: # <-- Add or uncomment this section
+      - '5432:5432' # Map container port 5432 to host port 5432
+    networks:
+      - app_network # Connect to our custom network
+
+  app:
+    container_name: ${PROJECT_NAME:-dev}_nextjs # Consistent naming
+    build:
+      context: ./app  # Tells Docker to look for the Dockerfile in the './app' directory
+      dockerfile: Dockerfile # Specifies the name of the Dockerfile (default is Dockerfile)
+    # ---------------------------------
+    restart: always
+    ports:
+      - '3000:3000' # Map host port 3000 to container port 3000
+    environment:
+      # Ensure Next.js app knows how to reach the database
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      # NextAuth variables (read from .env)
+      NEXTAUTH_URL: http://localhost:3000 # Default URL for NextAuth during development
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+      # Set Node environment
+      NODE_ENV: development # Important for Next.js behaviour
+    depends_on:
+      - db # Tells Compose to start 'db' before 'app'
+    networks:
+      - app_network # Connect to the same network as the db
+    volumes:
+      # Mount local code directory into the container's working directory
+      - ./app:/app
+      # Prevent local node_modules from overwriting container's node_modules
+      # Use an anonymous volume to mask the node_modules path within the main mount
+      - /app/node_modules
+      # Mount a named volume for the Next.js cache for better dev performance
+      - next_cache:/app/.next
+
+# Define networks and volumes at the end of the file
+volumes:
+  postgres_data: # Define the named volume
+  next_cache:
+
+networks:
+  app_network: # Define the custom network
+    driver: bridge

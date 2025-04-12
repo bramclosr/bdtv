@@ -1,0 +1,42 @@
+# bd-tv/.gitignore
+
+# Dependencies
+web/node_modules
+web/.pnp
+web/.pnp.js
+
+# Testing
+web/coverage
+
+# Next.js specific
+web/.next/
+web/out/
+
+# Production build artifacts
+web/build
+
+# Misc
+.DS_Store
+*.pem
+
+# Debug log files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment variables
+.env # Important: For the root .env file we create later
+web/.env*.local # Ignore local env overrides specific to Next.js
+
+# Editor directories and files
+.vscode
+*.sublime-project
+*.sublime-workspace
+.idea
+
+# Docker cache / data (optional, depends on setup)
+# postgres_data/ # Example if you mapped volume locally instead of named volume
+
+# Drizzle specific (We'll add this later if needed)
+# web/drizzle/migrations/* # Might want to commit migrations, maybe not folder itself

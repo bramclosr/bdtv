@@ -1,0 +1,22 @@
+{
+  "name": "bd-tv",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "//": "Drizzle Kit Commands (run from root)",
+    "db:generate": "drizzle-kit generate", 
+    "db:migrate": "echo 'Migration script not yet implemented' && exit 1",
+    "db:push": "drizzle-kit push",     
+    "db:studio": "drizzle-kit studio",   
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "dotenv": "^16.5.0",
+    "drizzle-kit": "^0.30.6"
+  }
+}
