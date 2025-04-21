@@ -1,0 +1,81 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine # Use a specific PostgreSQL version
+    container_name: bdtv_db
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-bdtv} # Use .env or default
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
+    ports:
+      - "${DB_PORT:-5432}:5432" # Expose port to host (optional, for direct access)
+    volumes:
+      - postgres_data:/var/lib/postgresql/data # Persist data
+    healthcheck:
+        test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_DATABASE:-bdtv}"]
+        interval: 10s
+        timeout: 5s
+        retries: 5
+        start_period: 10s
+    # Add command to increase WAL size
+    command: postgres -c max_wal_size=1GB
+    networks:
+      - bdtv_network
+
+  app:
+    build: .
+    container_name: bdtv_app
+    ports:
+      - "${PORT:-3001}:3001" # Expose app port
+    depends_on:
+      db:
+        condition: service_healthy # Wait for db to be ready
+    environment:
+      - NODE_ENV=development # or production
+      - PORT=${PORT:-3001}
+      - DB_HOST=db # Use the service name as the hostname inside docker network
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-password}
+      - DB_DATABASE=${DB_DATABASE:-bdtv}
+      - DB_PORT=5432 # Default PG port inside the network
+      # Construct DB_URL for Drizzle inside the container
+      - DB_URL=postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-password}@db:5432/${DB_DATABASE:-bdtv}
+    volumes:
+      - .:/usr/src/app # Mount current directory (for development hot-reloading)
+      - /usr/src/app/node_modules # Don't mount node_modules from host
+      - /usr/src/app/stream_data # Use the volume defined in Dockerfile
+      # Example: Mount a local directory containing your M3U file
+      # - ./m3u_files:/usr/src/app/m3u_files
+    networks:
+      - bdtv_network
+    # Command override if needed, otherwise uses Dockerfile CMD
+    # command: npm run start:dev
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: bdtv_frontend
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    depends_on:
+      - app
+    environment:
+      # Use localhost and the backend's *exposed* port (3001) for browser access
+      - NEXT_PUBLIC_API_BASE_URL=http://localhost:${PORT:-3001}/api 
+      - NODE_ENV=development
+    volumes:
+      - ./frontend:/usr/src/app
+      - /usr/src/app/node_modules
+      - /usr/src/app/.next
+    networks:
+      - bdtv_network
+    command: npm run dev
+
+volumes:
+  postgres_data: # Define the named volume
+
+networks:
+  bdtv_network:
+    driver: bridge 

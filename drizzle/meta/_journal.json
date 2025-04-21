@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1745168040531,
+      "tag": "0000_large_blur",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1745217852336,
+      "tag": "0001_superb_famine",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1745219100919,
+      "tag": "0002_organic_starfox",
+      "breakpoints": true
+    }
+  ]
+}
