@@ -2,22 +2,15 @@ version: '3.8'
 
 services:
   db:
-    image: postgres:15-alpine # Use a specific PostgreSQL version
+    image: postgres:15
     container_name: bdtv_db
+    restart: always
     environment:
       POSTGRES_DB: ${DB_DATABASE:-bdtv} # Use .env or default
-      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_USER: ${DB_USER:-user}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
-    ports:
-      - "${DB_PORT:-5432}:5432" # Expose port to host (optional, for direct access)
     volumes:
       - postgres_data:/var/lib/postgresql/data # Persist data
-    healthcheck:
-        test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_DATABASE:-bdtv}"]
-        interval: 10s
-        timeout: 5s
-        retries: 5
-        start_period: 10s
     # Add command to increase WAL size
     command: postgres -c max_wal_size=1GB
     networks:
@@ -30,7 +23,7 @@ services:
       - "${PORT:-3001}:3001" # Expose app port
     depends_on:
       db:
-        condition: service_healthy # Wait for db to be ready
+        condition: service_started # Wait for db container to start, but not necessarily healthy
     environment:
       - NODE_ENV=development # or production
       - PORT=${PORT:-3001}

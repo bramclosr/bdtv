@@ -88,14 +88,7 @@ const LOCATION_CODE_MAP: { [key: string]: string } = {
 
 export default function Home() {
   const [searchTerm, setSearchTerm] = useState<string>('');
-  const [selectedLanguages, setSelectedLanguages] = useState<string[]>(() => {
-    // Load saved languages from localStorage on initial load
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('selectedLanguages');
-      return saved ? JSON.parse(saved) : [];
-    }
-    return [];
-  });
+  const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]); // Initialize empty
   const [allGroups, setAllGroups] = useState<string[]>([]); // State for all group titles
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null); // State for selected group filter
   const [filteredChannels, setFilteredChannels] = useState<Channel[]>([]); // Store results from API
@@ -184,6 +177,29 @@ export default function Home() {
       }
     };
   }, [searchTerm, selectedLanguages, selectedGroup, fetchFilteredChannels]);
+
+  // Effect to load saved languages from localStorage *after* mount
+  useEffect(() => {
+    console.log("Component mounted, checking localStorage for languages...");
+    const saved = localStorage.getItem('selectedLanguages');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) { // Ensure it's an array
+            console.log("Found saved languages:", parsed);
+            setSelectedLanguages(parsed);
+        } else {
+            console.warn('Invalid data found in localStorage for languages, resetting.');
+            localStorage.removeItem('selectedLanguages');
+        }
+      } catch (e) {
+          console.error('Failed to parse languages from localStorage:', e);
+          localStorage.removeItem('selectedLanguages'); // Clear corrupted data
+      }
+    } else {
+      console.log("No saved languages found in localStorage.");
+    }
+  }, []); // Empty dependency array ensures this runs only once on mount
 
   // Effect to fetch initial stream status on load
   useEffect(() => {
@@ -423,7 +439,7 @@ export default function Home() {
                  className="p-2 border border-gray-300 rounded text-black dark:text-white dark:bg-gray-700 dark:border-gray-600"
              >
                  <option value="">All Categories</option>
-                 {allGroups.map(group => (
+                 {[...new Set(allGroups)].map(group => (
                      <option key={group} value={group}>{group}</option>
                  ))}
              </select>
