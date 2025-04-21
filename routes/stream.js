@@ -85,6 +85,11 @@ async function stopActiveStream() {
     };
 }
 
+// GET /api/stream/status - Report the currently active stream
+router.get('/status', (req, res) => {
+    res.json({ activeChannelId: activeStream.channelId });
+});
+
 // GET /api/stream/:channelId/playlist.m3u8
 router.get('/:channelId/playlist.m3u8', async (req, res, next) => {
     const requestedChannelId = parseInt(req.params.channelId);
@@ -97,7 +102,12 @@ router.get('/:channelId/playlist.m3u8', async (req, res, next) => {
         // --- Single Stream Constraint Handling ---
         if (activeStream.channelId !== null && activeStream.channelId !== requestedChannelId) {
             console.log(`Request for new channel ${requestedChannelId}, stopping current stream ${activeStream.channelId}`);
-            await stopActiveStream(); // Stop and clean up previous stream
+
+            // --- MODIFIED LOGIC: Prevent Hijacking ---
+            console.log(`Request for new channel ${requestedChannelId} ignored. Stream ${activeStream.channelId} is already active.`);
+            // Redirect the user to the *currently active* stream instead of stopping it.
+            return res.redirect(`/hls/${activeStream.channelId}/playlist.m3u8`);
+            // --- END MODIFIED LOGIC ---
         } else if (activeStream.channelId === requestedChannelId && activeStream.playlistPath) {
             // Stream already running for the requested channel, return existing playlist path
             console.log(`Stream for channel ${requestedChannelId} already running. Returning existing playlist.`);

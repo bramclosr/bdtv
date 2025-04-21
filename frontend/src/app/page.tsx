@@ -105,6 +105,8 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [streamUrl, setStreamUrl] = useState<string | null>(null);
   const [isLoadingStream, setIsLoadingStream] = useState<boolean>(false);
+  const [isLoadingInitialState, setIsLoadingInitialState] = useState<boolean>(true); // Loading state for initial status check
+  const [globalActiveChannelId, setGlobalActiveChannelId] = useState<number | null>(null); // Track globally active stream
 
   const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
   const backendBaseUrl = apiBaseUrl?.replace('/api', '');
@@ -182,6 +184,48 @@ export default function Home() {
       }
     };
   }, [searchTerm, selectedLanguages, selectedGroup, fetchFilteredChannels]);
+
+  // Effect to fetch initial stream status on load
+  useEffect(() => {
+    const fetchInitialStatus = async () => {
+      if (!apiBaseUrl) {
+        setIsLoadingInitialState(false);
+        return;
+      }
+      console.log('Fetching initial stream status...');
+      try {
+        const statusRes = await fetch(`${apiBaseUrl}/stream/status`);
+        if (!statusRes.ok) throw new Error(`Status fetch failed: ${statusRes.status}`);
+        const statusData = await statusRes.json();
+        console.log('Initial status data:', statusData);
+
+        if (statusData.activeChannelId) {
+          const activeId = statusData.activeChannelId;
+          setGlobalActiveChannelId(activeId);
+          console.log(`Active stream detected: ${activeId}. Fetching channel details...`);
+
+          // Fetch details for the active channel
+          const channelRes = await fetch(`${apiBaseUrl}/channels/${activeId}`);
+          if (!channelRes.ok) throw new Error(`Channel details fetch failed: ${channelRes.status}`);
+          const channelData: Channel = await channelRes.json();
+          console.log('Active channel details:', channelData);
+
+          setSelectedChannel(channelData); // Set as selected, this triggers stream URL fetch
+        } else {
+          console.log('No active stream detected.');
+          setGlobalActiveChannelId(null);
+        }
+      } catch (err) {
+        console.error('Error fetching initial stream status or channel details:', err);
+        setError('Could not load initial stream status.'); // Inform user
+      } finally {
+        setIsLoadingInitialState(false);
+      }
+    };
+
+    fetchInitialStatus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apiBaseUrl]); // Run only once on mount
 
   // Temporary effect to fetch and log group titles - Modify to set state
   useEffect(() => {
@@ -296,9 +340,26 @@ export default function Home() {
 
   // Handle channel selection (remains the same)
   const handleSelectChannel = (channel: Channel) => {
+    // --- MODIFIED LOGIC: Prevent selection if global stream is active and different ---
+    if (globalActiveChannelId !== null && globalActiveChannelId !== channel.id) {
+        console.log(`Channel selection blocked: Stream ${globalActiveChannelId} is already active.`);
+        // Optionally, provide feedback to the user
+        setError(`Another stream (${globalActiveChannelId}) is currently active. Please join that stream or wait.`);
+        // Or, force selection of the active channel
+        // if (selectedChannel?.id !== globalActiveChannelId) { 
+        //    console.log(`Redirecting selection to active channel: ${globalActiveChannelId}`);
+        //    // Find the active channel details from filteredChannels or fetch again if needed
+        // } 
+        return; // Prevent selecting a different channel
+    }
+    // --- END MODIFIED LOGIC ---
+
+    // Original logic: Only update state if the channel is actually different
+    // This is now only reachable if globalActiveChannelId is null OR channel.id matches globalActiveChannelId
     if (selectedChannel?.id !== channel.id) {
-        console.log(`Selected channel: ${channel.name} (ID: ${channel.id})`);
+        console.log(`Selecting channel: ${channel.name} (ID: ${channel.id})`);
         setSelectedChannel(channel);
+        setError(null); // Clear previous errors on new selection
     }
   };
 
@@ -373,8 +434,9 @@ export default function Home() {
       {/* Main Layout: Channel List & Player */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Channel List */}
-        <div className="md:col-span-1 bg-gray-100 p-4 rounded shadow overflow-y-auto h-[70vh]">
+        <div className={`md:col-span-1 bg-gray-100 p-4 rounded shadow overflow-y-auto h-[70vh] ${globalActiveChannelId !== null ? 'opacity-75 pointer-events-none' : ''}`}>
           <h2 className="text-lg font-semibold mb-3 text-gray-800">Channels</h2>
+          {isLoadingInitialState && <p className="text-gray-600">Checking stream status...</p>}
           {loading && <p className="text-gray-600">Loading results...</p>}
           {error && <p className="text-red-500">Error: {error}</p>}
           {!loading && !error && filteredChannels.length === 0 && (searchTerm || selectedLanguages.length > 0 || selectedGroup) && (
@@ -410,6 +472,7 @@ export default function Home() {
 
         {/* Video Player (remains the same) */}
         <div className="md:col-span-2 bg-black rounded shadow flex items-center justify-center h-[70vh]">
+          {isLoadingInitialState && <p className="text-gray-400 text-center">Checking stream status...</p>}
           {isLoadingStream && (
              <p className="text-gray-400 text-center">Loading stream...</p>
           )}

@@ -103,4 +103,27 @@ router.get('/groups', async (req, res, next) => {
     }
 });
 
+// GET /api/channels/:id - Get details for a single channel
+router.get('/:id', async (req, res, next) => {
+    const channelId = parseInt(req.params.id);
+    if (isNaN(channelId)) {
+        return res.status(400).json({ message: 'Invalid Channel ID format.' });
+    }
+
+    try {
+        const result = await db.select()
+                               .from(schema.channels)
+                               .where(eq(schema.channels.id, channelId))
+                               .limit(1);
+
+        if (result.length === 0) {
+            return res.status(404).json({ message: 'Channel not found.' });
+        }
+        res.json(result[0]); // Return the single channel object
+    } catch (err) {
+        console.error(`Error fetching channel ID ${channelId}:`, err);
+        next(err);
+    }
+});
+
 export default router; // Use ES module export 

@@ -1,4 +1,7 @@
 node_modules
 .env
 stream_data/
-*.log 
+*.log
+
+# Input Data / Large Files
+tv_channels_bramd1_plus.m3u 
